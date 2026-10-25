@@ -36,3 +36,12 @@ python3 -m unittest discover -s tests -v
 ```
 
 Fonts load from Google Fonts when available, with system font fallbacks. The picnic artwork is CSS and needs no image downloads.
+
+
+
+## To Run Project
+
+source .venv/bin/activate
+uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+
+http://127.0.0.1:8000
