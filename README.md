@@ -1,4 +1,4 @@
-# Team-9 Project — Smart Picnic Planner
+# BLANKET & BITES !! — Smart Picnic Planner
 
 A responsive HTML/CSS/JavaScript UI served by a Python FastAPI backend. No Node.js or frontend build step is required.
 
@@ -35,7 +35,7 @@ This version uses **sample data**, without live agents, location lookup, weather
 python3 -m unittest discover -s tests -v
 ```
 
-Fonts load from Google Fonts when available, with system font fallbacks. The picnic artwork is CSS and needs no image downloads.
+Fonts load from Google Fonts when available, with system font fallbacks. Picnic photographs are AI-generated and served locally from `frontend/images/`.
 
 
 
