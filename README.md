@@ -1,4 +1,4 @@
-# Team-9 Project — Smart Picnic Planner
+# BLANKET & BITES !! — Smart Picnic Planner
 
 A responsive HTML/CSS/JavaScript UI served by a Python FastAPI backend. No Node.js or frontend build step is required.
 
@@ -14,6 +14,25 @@ uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Open http://127.0.0.1:8000. API documentation is at http://127.0.0.1:8000/docs.
+
+## Host on Render
+
+The repository includes a `render.yaml` Blueprint for one free Python web service.
+FastAPI serves both the frontend and API, so no separate frontend hosting or
+database is needed for this demo. `.python-version` selects Python 3.13.
+
+1. Commit and push the deployment files to a GitHub repository you control.
+2. Sign in to [Render](https://dashboard.render.com/) and choose **New > Blueprint**.
+3. Connect that repository and review the `blanket-and-bites` service on the **Free** plan.
+4. Deploy the Blueprint. Render installs `requirements.txt`, starts Uvicorn on its
+   assigned `$PORT`, and checks `/api/health`.
+5. Open the HTTPS URL shown in the service dashboard. Verify that `/api/health`
+   returns `{"status":"ok","mode":"demo"}` and create a sample plan from the homepage.
+
+Free services sleep after 15 minutes without traffic and can take about a minute
+to wake up. See [Render's free-service limits](https://render.com/docs/free).
+Saved plans stay in each visitor's browser; plans saved on localhost will not
+appear at the hosted URL. Deployment does not add live venue or weather data.
 
 ## Current functionality
 
@@ -35,7 +54,7 @@ This version uses **sample data**, without live agents, location lookup, weather
 python3 -m unittest discover -s tests -v
 ```
 
-Fonts load from Google Fonts when available, with system font fallbacks. The picnic artwork is CSS and needs no image downloads.
+Fonts load from Google Fonts when available, with system font fallbacks. Picnic photographs are AI-generated and served locally from `frontend/images/`.
 
 
 

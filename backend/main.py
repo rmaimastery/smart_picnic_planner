@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from backend.planner import build_plan
 
-app = FastAPI(title='Team-9 Project — Smart Picnic Planner', version='0.1.0')
+app = FastAPI(title='BLANKET & BITES !! — Picnic Planner', version='0.1.0')
 
 
 class PicnicRequest(BaseModel):

@@ -38,5 +38,5 @@ function renderPlan() {
   document.querySelectorAll('[data-venue]').forEach((button) => button.addEventListener('click', () => { plan.selected_venue = button.dataset.venue; renderPlan(); }));
   $('#approve').addEventListener('click', () => { plan.status = 'approved'; renderPlan(); toast('Plan approved locally. No external actions were taken.'); });
   $('#save').addEventListener('click', () => { try { localStorage.setItem('gather-plan', JSON.stringify(plan)); $('#saved-count').textContent = '1'; toast('Plan saved in this browser.'); } catch { toast('Browser storage is unavailable. Use Export to keep your plan.'); } });
-  $('#download').addEventListener('click', () => { const url = URL.createObjectURL(new Blob([JSON.stringify(plan, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = 'team-9-picnic-plan.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); });
+  $('#download').addEventListener('click', () => { const url = URL.createObjectURL(new Blob([JSON.stringify(plan, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = 'blanket-and-bites-picnic-plan.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); });
 }
