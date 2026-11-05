@@ -23,6 +23,14 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(plan['status'], 'needs_revision')
         self.assertFalse(plan['checks']['food_allowance'])
 
+    def test_requested_distance_limits_sample_venues(self):
+        request = self.request()
+        request["distance_miles"] = 5
+        plan = build_plan(request)
+        distances = [v["distance_miles"] for v in plan["venues"]]
+        self.assertEqual(distances, sorted(distances))
+        self.assertTrue(all(d <= 5 for d in distances))
+
     def test_large_group_and_short_travel(self):
         request = self.request()
         request.update(guests=500, budget=10000, travel_minutes=10)

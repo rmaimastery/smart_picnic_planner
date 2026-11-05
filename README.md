@@ -1,33 +1,97 @@
 # Team-9 Project — Smart Picnic Planner
 
-A responsive HTML/CSS/JavaScript UI served by a Python FastAPI backend. No Node.js or frontend build step is required.
+A conversational picnic planner using **FastAPI, LangGraph, Groq, Tavily, and Human-in-the-Loop (HITL)**. The existing light chat interface displays researched places, a complete plan, approval controls, and a group review link. No frontend build step is needed.
 
 ## Run locally
-
-From this project directory:
 
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+Add your private API keys to `.env` (already ignored by Git):
+
+```dotenv
+GROQ_API_KEY=your_private_groq_key
+TAVILY_API_KEY=your_private_tavily_key
+GROQ_MODEL=openai/gpt-oss-20b
+```
+
+The model is configurable; choose a currently supported Groq model with JSON object output if your account does not support the default. `.env.example` contains an empty configuration template. Keys load on server startup and stay on the backend. Restart after changing them.
+
+```sh
 uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000. API documentation is at http://127.0.0.1:8000/docs.
+Open http://127.0.0.1:8000. API documentation: http://127.0.0.1:8000/docs.
 
-## Current functionality
+## User flow
 
-- Responsive planning form: date, guests, starting location, budget, travel limit and dietary preferences.
-- FastAPI request validation and a deterministic sample planning workflow.
-- Three illustrative venue choices, menu, budget calculation, schedule, shopping list, assignments and backup plan.
-- A low food allowance blocks approval and asks for revised inputs.
-- Approve locally, save one plan in browser storage, and export a JSON plan.
+Describe your picnic, for example:
 
-This version uses **sample data**, without live agents, location lookup, weather, reservations, email, calendar integrations or a database. Venue names, capacity and travel estimates are illustrative, not real recommendations. Approval does not execute external actions. Natural-language notes are retained as context; structured form fields control the sample planner. Dietary selections are recorded but ingredients are not verified. Browser saves are local to the current browser/origin and saving replaces the previous plan.
+> Plan a team picnic for 30 people near San Ramon next Saturday with a $1,000 budget, vegetarian food and lawn games, within 20 miles.
 
-## Next integration points
+1. **Groq understands the request.** It extracts details, resolves dates using the browser's local date, and preserves occasion and activity notes.
+2. **HITL — missing details.** LangGraph pauses for missing budget, guest count, food option, location, date or travel distance. Answer in the chat. Python validates ranges and dates before research.
+3. **Tavily researches places.** Search results are summarized into up to five distinct places with source URLs. The app may show fewer than five; no supported results prompts a revised location or distance.
+4. **HITL — place selection.** Choose a place from the cards, or type a change to revise the search.
+5. **Groq generates the plan.** It suggests menu, schedule, shopping, coordination tasks and backup options using the selected venue and requirements.
+6. **Python validates estimates.** It checks allowance totals and a minimum food allowance of $8 per guest. An insufficient food allowance blocks approval.
+7. **HITL — final approval.** Review the plan, ask for revisions, or select **Approve plan**. Revisions invalidate approval and return through collection and place selection.
+8. **HITL — sharing decision.** Only after approval does **Share for review** create an immutable server-side snapshot. Copy the link and send it through your own chat or email.
 
-`backend/planner.py` owns the planning boundary. Replace its sample providers with LangGraph location/weather, food/budget and guest coordination agents, returning the same response shape. Add persistent plan IDs and storage, server-side approval/versioning, tool-backed constraint checks and a bounded re-planning loop before enabling real actions. The current frontend progress indicator describes the sample workflow; it is not a streamed agent trace.
+**Edit details** sends structured corrections through the same graph. **Save plan** stores one plan and its workflow reference in this browser. **Saved plan** resumes the server's current workflow, which may be newer than the local save. Export JSON downloads the current plan. **New picnic** starts a new thread. After sharing, start a new picnic for another plan; the completed snapshot stays unchanged.
+
+## LangGraph implementation
+
+```mermaid
+flowchart TD
+    A[User input] --> B[Groq: collect details]
+    B --> C{Required details valid?}
+    C -- No --> D[HITL: missing details]
+    D --> B
+    C -- Yes --> E[Tavily: search and source places]
+    E -- No supported places --> D
+    E -- Places found --> F[HITL: select place]
+    F -- Revise --> B
+    F -- Select --> G[Groq: generate plan]
+    G --> H[Python: validate estimates]
+    H --> I[HITL: review and approve]
+    I -- Revise --> B
+    I -- Approved --> J[HITL: share decision]
+    J -- Revise --> B
+    J -- Share --> K[Persist immutable review snapshot]
+```
+
+`backend/workflow.py` defines a real `StateGraph`, conditional edges, `interrupt()` calls and `Command(resume=...)`. Each checkpoint persists to SQLite. The browser retains a random thread token and restores the current pause or result after refresh. A failed provider node can be retried without repeating completed graph nodes. Same-thread operations are serialized within this single-process app; use one Uvicorn worker for this local implementation.
+
+Graph state includes validated picnic details, the pending question, researched venues, selected venue, generated plan and sharing status. Search results are reused when location, distance, guest count and notes are unchanged. Groq extracts supported places only from Tavily excerpts; source URLs must exactly match retrieved results. Unknown distance, capacity and fees stay unknown.
+
+`backend/providers.py` handles bounded, timed server-side API calls, JSON validation, safe source links and readable errors for missing keys, rate limits and provider failures. There is no automatic fallback to invented venues or the old local parser when providers fail.
+
+`POST /api/chat` starts or resumes a thread with `message`, `today`, `thread_id`, and an action (`message`, `select`, `approve`, `share`). `GET /api/workflows/{thread_id}` restores it. Approval and sharing use the server's checkpointed plan; the frontend cannot submit an edited plan to bypass approval.
+
+`backend/conversation.py`, `POST /api/plans` and the original sample sharing endpoint remain for legacy sample compatibility and regression tests. The current chat interface uses the LangGraph endpoints instead.
+
+## Estimates and research limits
+
+Tavily performs web search, not map routing or reservation lookup. Suggested places are candidates near the requested area; exact travel distance, capacity, fees, hours and date-specific availability require direct verification. Official park sources are preferred but not guaranteed. LLM extraction and summaries can be mistaken, so review linked sources.
+
+Budgets are transparent planning allowances calculated in Python: food 60%, supplies 12%, and venue allowance up to 10% capped at $100. They are not real quotes or known venue fees. Groq uses dietary and activity requirements when generating suggestions, but dietary safety and ingredient suitability are not verified. Weather and reservations are not integrated. No email, invitation or calendar event is sent automatically. Provider use is subject to your accounts' quotas and pricing.
+
+## Sharing and persistence
+
+Anyone with a review link can view its snapshot and feedback and respond without an account. Links are possession-based; responses are self-reported and unauthenticated. Snapshots exclude raw prompt, full guest-name list and private notes fields; generated plan content and coordination roles remain visible. Treat generated content as public once shared.
+
+The backend stores:
+
+- `data/workflow.sqlite3`: graph checkpoints, including private picnic details and notes. Override with `PICNIC_GRAPH_DB_PATH`.
+- `data/picnics.sqlite3`: shared snapshots and group feedback. Override with `PICNIC_DB_PATH`.
+
+Keep these files on persistent storage. New picnic clears the browser's active reference but does not delete stored checkpoints. Workflow tokens permit access to and control of that workflow; keep them private. Group review tokens give read/feedback access only. This local project has no user accounts, checkpoint expiry or multi-user authentication.
+
+A `127.0.0.1` link works only on your device. To share on Wi-Fi, bind the server to `0.0.0.0`, open it with your computer's LAN IP and create the link there. For remote groups, host behind HTTPS at a reachable address. This change does not deploy the app.
 
 ## Verification
 
@@ -35,13 +99,6 @@ This version uses **sample data**, without live agents, location lookup, weather
 python3 -m unittest discover -s tests -v
 ```
 
-Fonts load from Google Fonts when available, with system font fallbacks. The picnic artwork is CSS and needs no image downloads.
+Tests exercise the actual compiled graph with mocked providers: missing-detail interrupts, checkpoint restoration, selection, generation, approval gates, low-budget blocking, revisions, cached searches, provider retry, session isolation, canonical sharing, source validation and feedback privacy. Browser checks cover place cards, reload/resume, approval gating, share review and mobile layouts. Mocked checks use no provider credits; live testing requires configured keys.
 
-
-
-## To Run Project
-
-source .venv/bin/activate
-uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-
-http://127.0.0.1:8000
+`preview/index.html` contains captured UI screens. LangGraph fixture screenshots are explicitly labeled as using mocked provider data. Fonts use Google Fonts with system fallbacks.

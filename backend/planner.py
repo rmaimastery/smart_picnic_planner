@@ -12,15 +12,16 @@ def build_plan(request: dict) -> dict:
     food = round(budget * .60, 2)
     total = round(venue_cost + supplies + food, 2)
     feasible = food / guests >= 8
+    distance = request.get('distance_miles', 30)
     return {
         'id': f"picnic-{date.today().isoformat()}",
         'status': 'pending_approval' if feasible else 'needs_revision',
         'request': request,
         'demo': True,
         'venues': [
-            {'id': 'meadow', 'name': 'Meadow picnic area', 'travel_minutes': min(15, travel), 'capacity': max(40, guests), 'fee': venue_cost, 'features': 'Open lawn · picnic tables · restrooms'},
-            {'id': 'oak', 'name': 'Oak grove picnic area', 'travel_minutes': min(22, travel), 'capacity': max(50, guests), 'fee': venue_cost, 'features': 'Shaded tables · walking paths · restrooms'},
-            {'id': 'covered', 'name': 'Covered garden pavilion', 'travel_minutes': min(28, travel), 'capacity': max(60, guests), 'fee': venue_cost, 'features': 'Covered seating · accessible paths · parking'},
+            {'id': 'meadow', 'name': 'Meadow picnic area', 'distance_miles': min(5, distance), 'travel_minutes': min(15, travel), 'capacity': max(40, guests), 'fee': venue_cost, 'features': 'Open lawn · picnic tables · restrooms'},
+            {'id': 'oak', 'name': 'Oak grove picnic area', 'distance_miles': min(8, distance), 'travel_minutes': min(22, travel), 'capacity': max(50, guests), 'fee': venue_cost, 'features': 'Shaded tables · walking paths · restrooms'},
+            {'id': 'covered', 'name': 'Covered garden pavilion', 'distance_miles': min(12, distance), 'travel_minutes': min(28, travel), 'capacity': max(60, guests), 'fee': venue_cost, 'features': 'Covered seating · accessible paths · parking'},
         ],
         'selected_venue': 'meadow',
         'menu': ['Build-your-own sandwiches & veggie wraps', 'Seasonal fruit & crunchy garden salad', 'Lemonade, water & a sweet treat'],
