@@ -102,3 +102,16 @@ python3 -m unittest discover -s tests -v
 Tests exercise the actual compiled graph with mocked providers: missing-detail interrupts, checkpoint restoration, selection, generation, approval gates, low-budget blocking, revisions, cached searches, provider retry, session isolation, canonical sharing, source validation and feedback privacy. Browser checks cover place cards, reload/resume, approval gating, share review and mobile layouts. Mocked checks use no provider credits; live testing requires configured keys.
 
 `preview/index.html` contains captured UI screens. LangGraph fixture screenshots are explicitly labeled as using mocked provider data. Fonts use Google Fonts with system fallbacks.
+
+
+# Flow and Detail 
+Component	Responsibility
+Frontend	Chat, place choices, plan preview, approval, sharing and feedback
+FastAPI	Receives requests, validates input and serves the app
+LangGraph	Coordinates steps, pauses for human input and resumes workflows
+Groq LLM	Extracts details, summarizes search results and generates the plan
+Tavily	Searches the web for picnic places and source links
+Python validation	Checks required details, date, limits and budget allowances
+SQLite	Stores workflow checkpoints, shared plans and feedback
+
+The required details are budget, guest count, food preference, starting location, date, and travel distance.
