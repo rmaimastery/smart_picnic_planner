@@ -8,6 +8,7 @@ import threading
 from datetime import date
 from pathlib import Path
 from typing import TypedDict, Literal
+from contextlib import closing
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import interrupt, Command
@@ -15,6 +16,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from backend import providers
 from backend.planner import build_plan
 from backend.sharing import create_share
+from backend.food import apply_choice, resolve_choice
 
 
 class Details(BaseModel):
@@ -158,12 +160,17 @@ def generate(s):
         'Venue descriptions come from web search excerpts. Confirm distance, capacity, availability, fees and opening hours with the park.',
         'Costs are planning allowances, not quotes. Weather and dietary suitability have not been verified.']
     plan['workflow'] = ['Groq details collected', 'Tavily places researched', 'Human selected venue', 'Groq plan generated', 'Python budget validated', 'Awaiting human approval']
-    return {'plan': plan, 'stage': 'approval'}
+    return {'plan': plan, 'stage': 'food'}
 
 
 def review(s):
-    answer = interrupt({'stage': 'approval', 'reply': 'Your plan is ready. Review it, request changes, or approve it before sharing.', 'plan': s['plan']})
-    if answer.get('action') == 'approve' and s['plan']['status'] != 'needs_revision':
+    food_ready = bool(s['plan'].get('food_selection'))
+    answer = interrupt({'stage': 'approval' if food_ready else 'food',
+                        'reply': 'Your plan is ready. Review it, request changes, or approve it before sharing.' if food_ready else 'Your place is selected. Plan your food before final review: shop for ingredients or order prepared food.',
+                        'plan': s['plan']})
+    if answer.get('action') == 'food':
+        return {'plan': apply_choice(s['plan'], answer['food_selection']), 'action': 'food_selected', 'shared': None, 'stage': 'approval'}
+    if answer.get('action') == 'approve' and food_ready and s['plan']['status'] != 'needs_revision':
         plan = copy.deepcopy(s['plan'])
         plan['status'] = 'approved'
         return {'plan': plan, 'action': 'approved', 'share_token': secrets.token_urlsafe(24)}
@@ -173,9 +180,18 @@ def review(s):
 
 
 def share_gate(s):
-    answer = interrupt({'stage': 'share', 'reply': 'Plan approved. Select Share for review to create a group review link, or ask for changes.', 'plan': s['plan']})
+    food_ready = bool(s['plan'].get('food_selection'))
+    answer = interrupt({'stage': 'share' if food_ready else 'food',
+                        'reply': 'Plan approved. Select Share for review to create a group review link, or ask for changes.' if food_ready else 'Choose your food option before final review and sharing.',
+                        'plan': s['plan']})
     if answer.get('action') == 'share':
+        if not food_ready:
+            plan = copy.deepcopy(s['plan'])
+            plan['status'] = 'pending_approval' if all(plan['checks'].values()) else 'needs_revision'
+            return {'plan': plan, 'action': 'food_selected', 'stage': 'food'}
         return {'action': 'share'}
+    if answer.get('action') == 'food':
+        return {'plan': apply_choice(s['plan'], answer['food_selection']), 'action': 'food_selected', 'shared': None, 'stage': 'approval'}
     return {'action': 'revise', 'message': answer.get('message', ''), 'today': answer.get('today', s['today'])}
 
 
@@ -198,13 +214,37 @@ def build_graph(checkpointer):
     g.add_conditional_edges('research', lambda s: 'choose' if s['places'] else 'ask')
     g.add_conditional_edges('choose', lambda s: 'generate' if s['action'] == 'generate' else 'collect')
     g.add_edge('generate', 'review')
-    g.add_conditional_edges('review', lambda s: 'share_gate' if s['action'] == 'approved' else 'review' if s['action'] == 'blocked' else 'collect')
-    g.add_conditional_edges('share_gate', lambda s: 'publish' if s['action'] == 'share' else 'collect')
+    g.add_conditional_edges('review', lambda s: 'share_gate' if s['action'] == 'approved' else 'review' if s['action'] in ('blocked', 'food_selected') else 'collect')
+    g.add_conditional_edges('share_gate', lambda s: 'publish' if s['action'] == 'share' else 'review' if s['action'] == 'food_selected' else 'collect')
     g.add_edge('publish', END)
     return g.compile(checkpointer=checkpointer)
 
 
 _lock = threading.Lock()
+
+def copy_for_food(thread_id):
+    """Create an editable version of a shared picnic without rerunning providers."""
+    path = Path(os.getenv('PICNIC_GRAPH_DB_PATH', Path(__file__).resolve().parents[1] / 'data' / 'workflow.sqlite3'))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with _lock, closing(sqlite3.connect(path, check_same_thread=False)) as db:
+        graph = build_graph(SqliteSaver(db))
+        original = graph.get_state({'configurable': {'thread_id': thread_id}})
+        if not original.values:
+            raise KeyError('Unknown workflow.')
+        if original.values.get('stage') != 'shared' or not original.values.get('plan'):
+            raise ValueError('Open a shared picnic to create a new food version.')
+        values = copy.deepcopy(original.values)
+        plan = values['plan']
+        plan['id'] = f'picnic-{secrets.token_urlsafe(12)}'
+        plan['status'] = 'pending_approval' if all(plan['checks'].values()) else 'needs_revision'
+        values.update(plan=plan, stage='food' if not plan.get('food_selection') else 'approval',
+                      shared=None, share_token='', action='', reply='', message='')
+        new_thread = secrets.token_urlsafe(24)
+        config = {'configurable': {'thread_id': new_thread}}
+        graph.update_state(config, values, as_node='generate')
+        graph.invoke(None, config)
+    return run(new_thread, read_only=True)
+
 
 def run(thread_id, payload=None, read_only=False):
     path = Path(os.getenv('PICNIC_GRAPH_DB_PATH', Path(__file__).resolve().parents[1] / 'data' / 'workflow.sqlite3'))
@@ -221,11 +261,13 @@ def run(thread_id, payload=None, read_only=False):
                 pending = any(task.interrupts for task in before.tasks)
                 if pending:
                     pause = next(i.value for task in before.tasks for i in task.interrupts)
-                    allowed = {'details': {'message'}, 'places': {'message', 'select'}, 'approval': {'message', 'approve'}, 'share': {'message', 'share'}}
+                    allowed = {'details': {'message'}, 'places': {'message', 'select'}, 'food': {'message', 'food'}, 'approval': {'message', 'approve', 'food'}, 'share': {'message', 'share', 'food'}}
                     if payload.get('action') not in allowed.get(pause['stage'], set()):
                         raise ValueError('Complete the current human review step before continuing.')
                     if payload.get('action') == 'select' and not any(v['id'] == payload.get('venue_id') for v in before.values.get('places', [])):
                         raise ValueError('Choose one of the researched places.')
+                    if payload.get('action') == 'food':
+                        payload = {**payload, 'food_selection': resolve_choice(thread_id, before.values['plan'], payload)}
                 graph.invoke(Command(resume=payload) if pending else None, config)
             else:
                 if payload.get('action') != 'message':

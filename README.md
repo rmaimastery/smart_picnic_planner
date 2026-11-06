@@ -1,6 +1,6 @@
 # BLANKET & BITES !! — Smart Picnic Planner
 
-A conversational picnic planner using **FastAPI, LangGraph, Groq, Tavily, and Human-in-the-Loop (HITL)**. The existing light chat interface displays researched places, a complete plan, approval controls, and a group review link. No frontend build step is needed.
+A conversational picnic planner using **FastAPI, LangGraph, Groq, Tavily, and Human-in-the-Loop (HITL)**. The chat page collects your details, and the separate Your picnic page displays researched places, the complete plan, finalization controls, and a group review link. No frontend build step is needed.
 
 ## Run locally
 
@@ -57,13 +57,18 @@ Describe your picnic, for example:
 1. **Groq understands the request.** It extracts details, resolves dates using the browser's local date, and preserves occasion and activity notes.
 2. **HITL — missing details.** LangGraph pauses for missing budget, guest count, food option, location, date or travel distance. Answer in the chat. Python validates ranges and dates before research.
 3. **Tavily researches places.** Search results are summarized into up to five distinct places with source URLs. The app may show fewer than five; no supported results prompts a revised location or distance.
-4. **HITL — place selection.** Choose a place from the cards, or type a change to revise the search.
+4. **HITL — place selection.** Follow the chat handoff to **Your picnic** (`/picnic.html`) and choose a place from the cards. Return to **Picnic planner** to revise the search in chat.
 5. **Groq generates the plan.** It suggests menu, schedule, shopping, coordination tasks and backup options using the selected venue and requirements.
 6. **Python validates estimates.** It checks allowance totals and a minimum food allowance of $8 per guest. An insufficient food allowance blocks approval.
-7. **HITL — final approval.** Review the plan, ask for revisions, or select **Approve plan**. Revisions invalidate approval and return through collection and place selection.
-8. **HITL — sharing decision.** Only after approval does **Share for review** create an immutable server-side snapshot. Copy the link and send it through your own chat or email.
+7. **HITL — food selection.** The **Plan your picnic food** page offers **Shop for ingredients** and **Order prepared food** tabs. Guest count, food allowance, dietary needs and venue stay visible. Select **Find** to research nearby groceries or restaurants using Tavily and Groq, near the venue or starting location. Save a grocery store and a restaurant independently using **Save grocery store** and **Save restaurant**, or mark either business for later. Both choices remain visible in the food lineup; selecting one does not replace the other. **Review picnic plan** opens **Your picnic** for final review after saving your choices. Purchases happen on the linked business website; the app does not place orders. The food allowance remains an estimate, not a quote. A plan with both sources keeps the ingredient shopping list and adds ordering and transport tasks. The two sources share the existing food allowance; it is not counted twice.
+8. **HITL — final approval.** Food selection returns you to review. Review the plan, ask for revisions, or select **Save & finalize**. This finalizes the canonical server plan, saves it in this browser, and highlights **Share for review**. **Save draft** keeps an unfinished copy without finalizing it. Repeated finalized saves keep sharing enabled. Changing the food choice invalidates approval and requires another review. General revisions return through collection and place selection.
+9. **HITL — sharing decision.** Only after approval does **Share for review** create an immutable server-side snapshot. Both food choices appear in saved and shared plan summaries. Already shared plans stay read only. **Edit food in a new version** makes an editable copy with the same picnic details, venue and menu, without rerunning providers or changing the original review link. Copy the link and send it through your own chat or email.
 
-**Edit details** sends structured corrections through the same graph. **Save plan** stores one plan and its workflow reference in this browser. **Saved plan** resumes the server's current workflow, which may be newer than the local save. Export JSON downloads the current plan. **New picnic** starts a new thread. After sharing, start a new picnic for another plan; the completed snapshot stays unchanged.
+The left navigation separates **Picnic planner** (chat and detail collection), **Your picnic** (place selection, full plan, finalization and sharing), **Choose food options**, and **Saved plan**. The chat offers a handoff instead of showing the full plan beside the conversation. Conversation messages stay in this tab’s session storage by workflow so they survive navigation; the server remains the source of truth for picnic state.
+
+The six-step guide shows which required details the server has collected: budget, guests, food, location, date, and distance. Choose a step to enter or update that detail, then select **Save and continue**. You can also supply several details together in chat. A step is marked complete only after the server confirms it.
+
+**Edit details** sends structured corrections through the same graph. **Save & finalize** finalizes and stores one plan and its workflow reference in this browser. **Save draft** stores a copy without approval. **Saved plan** opens that saved copy in separate sections for overview, place, food, budget, schedule, shopping, assignments, and backup. **Open Your picnic** loads the server's current workflow, which may be newer than the saved copy; older sample plans remain viewable and exportable. Switching between the planner and saved copy preserves the active conversation. Export JSON downloads the displayed plan. **New picnic** starts a new thread. After sharing, start a new picnic for another plan; the completed snapshot stays unchanged.
 
 ## LangGraph implementation
 
@@ -79,10 +84,13 @@ flowchart TD
     F -- Revise --> B
     F -- Select --> G[Groq: generate plan]
     G --> H[Python: validate estimates]
-    H --> I[HITL: review and approve]
+    H --> FOOD[HITL: shop or order food]
+    FOOD -- Choose food option --> I[HITL: review and approve]
+    FOOD -- Revise picnic --> B
     I -- Revise --> B
     I -- Approved --> J[HITL: share decision]
     J -- Revise --> B
+    J -- Change food --> FOOD
     J -- Share --> K[Persist immutable review snapshot]
 ```
 
@@ -92,7 +100,7 @@ Graph state includes validated picnic details, the pending question, researched 
 
 `backend/providers.py` handles bounded, timed server-side API calls, JSON validation, safe source links and readable errors for missing keys, rate limits and provider failures. There is no automatic fallback to invented venues or the old local parser when providers fail.
 
-`POST /api/chat` starts or resumes a thread with `message`, `today`, `thread_id`, and an action (`message`, `select`, `approve`, `share`). `GET /api/workflows/{thread_id}` restores it. Approval and sharing use the server's checkpointed plan; the frontend cannot submit an edited plan to bypass approval.
+`POST /api/chat` starts or resumes a thread with `message`, `today`, `thread_id`, and an action (`message`, `select`, `food`, `approve`, `share`). `GET /api/workflows/{thread_id}` restores it. `POST /api/workflows/{thread_id}/food-options` searches food businesses with `mode` (`shop` or `order`) and `near` (`venue` or `start`). Food search results are cached for one hour per workflow, picnic context, mode and search area. The `food` action accepts the mode, area, search ID and option ID; business details are resolved from server results, not client-supplied business objects. Changed picnic details or expired searches require a fresh search. Approval and sharing use the server's checkpointed plan; the frontend cannot submit an edited plan to bypass approval.
 
 `backend/conversation.py`, `POST /api/plans` and the original sample sharing endpoint remain for legacy sample compatibility and regression tests. The current chat interface uses the LangGraph endpoints instead.
 
@@ -109,7 +117,7 @@ Anyone with a review link can view its snapshot and feedback and respond without
 The backend stores:
 
 - `data/workflow.sqlite3`: graph checkpoints, including private picnic details and notes. Override with `PICNIC_GRAPH_DB_PATH`.
-- `data/picnics.sqlite3`: shared snapshots and group feedback. Override with `PICNIC_DB_PATH`.
+- `data/picnics.sqlite3`: shared snapshots, group feedback and food-search results. Override with `PICNIC_DB_PATH`.
 
 Keep these files on persistent storage. New picnic clears the browser's active reference but does not delete stored checkpoints. Workflow tokens permit access to and control of that workflow; keep them private. Group review tokens give read/feedback access only. This local project has no user accounts, checkpoint expiry or multi-user authentication.
 
@@ -119,6 +127,12 @@ A `127.0.0.1` link works only on your device. To share on Wi-Fi, bind the server
 
 ```sh
 python3 -m unittest discover -s tests -v
+```
+
+With Node.js installed, run the frontend display regression tests:
+
+```sh
+node --test tests/test_plan_ui.cjs tests/test_food_ui.cjs tests/test_planner_actions.cjs
 ```
 
 Tests exercise the actual compiled graph with mocked providers: missing-detail interrupts, checkpoint restoration, selection, generation, approval gates, low-budget blocking, revisions, cached searches, provider retry, session isolation, canonical sharing, source validation and feedback privacy. Browser checks cover place cards, reload/resume, approval gating, share review and mobile layouts. Mocked checks use no provider credits; live testing requires configured keys.

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fff0b6">
+  <title>Plan your picnic food — Blanket &amp; Bites</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="sunny.css">
+  <link rel="stylesheet" href="food.css">
+  <script src="plan-ui.js" defer></script>
+  <script src="food.js" defer></script>
+</head>
+<body class="chat-page food-page">
+  <a class="skip-link" href="#food-tabs">Skip to food options</a>
+  <aside class="sidebar food-sidebar">
+    <a class="brand" href="/" aria-label="BLANKET &amp; BITES home"><span class="brand-mark" aria-hidden="true">b<span>+</span>b</span><span>BLANKET <em>&amp;</em> BITES !!<small>GOOD DAYS, TO GO.</small></span></a>
+    <div class="workspace">YOUR LITTLE ESCAPE</div>
+    <nav aria-label="Workspace"><a class="nav nav-planner" href="/"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11a8 8 0 0 1-8 8H7l-5 3 2-6a8 8 0 1 1 17-5Z"/><path d="M8 10h8M8 14h5"/></svg></span><span class="nav-copy"><strong>Picnic planner</strong><small>Dream it up</small></span><span class="nav-arrow" aria-hidden="true">↗</span></a><a class="nav nav-picnic" id="picnic-nav" href="picnic.html"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 3 11h12l3-11H3ZM7 10l5-8 5 8M8 14v3M12 14v3M16 14v3"/></svg></span><span class="nav-copy"><strong>Your picnic</strong><small>See your day together</small></span><span class="nav-arrow" aria-hidden="true">↗</span></a><span class="nav nav-food active" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v6a3 3 0 0 0 6 0V3M8 3v19M18 3v19M18 3c-4 3-4 9 0 9"/></svg></span><span class="nav-copy"><strong>Choose food options</strong><small>Shop, order, or both</small></span><span class="nav-arrow" aria-hidden="true">↗</span></span><a class="nav nav-saved" href="/#saved"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v18l-7-4-7 4V4a1 1 0 0 1 1-1ZM9 8h6"/></svg></span><span class="nav-copy"><strong>Saved plan</strong><small>Your basket of plans</small></span><span class="nav-arrow" aria-hidden="true">↗</span></a></nav>
+    <div class="sidebar-bottom"><div class="sunshine-card"><div class="mini-icon" aria-hidden="true">☀</div><strong>A little homemade.<br>A little takeout.</strong><p>Your picnic can have both.</p><span class="sunshine-flower" aria-hidden="true">✿</span></div></div>
+  </aside>
+  <main class="food-main">
+    <header class="food-header"><a class="food-brand" href="/">BLANKET &amp; BITES <span aria-hidden="true">✿</span></a><a class="secondary" id="back-to-picnic" href="picnic.html">← Back to Your picnic</a></header>
+    <section class="food-hero" aria-labelledby="food-title"><span class="eyebrow">YOUR PLACE IS PICKED. WHAT’S IN THE BASKET?</span><h1 id="food-title">Plan your picnic food</h1><p>A little homemade. A little takeout. Or a bit of both.<br>Add a grocery store and a restaurant to your picnic plan.</p></section>
+    <p id="food-page-status" role="status">Loading your picnic…</p>
+    <div id="food-content" hidden>
+      <section class="food-facts" id="food-facts" aria-label="Your picnic details"></section>
+      <section id="food-readonly" class="notice food-edit-version" hidden><div><h2>Ready to change the food?</h2><p>This picnic has already been shared. Create an editable version with the same details to choose a grocery store or restaurant. Your existing review link will stay unchanged.</p></div><button class="primary" id="edit-food-copy" type="button">Edit food in a new version →</button><p id="food-copy-status" role="status"></p></section>
+      <ol class="food-journey" aria-label="Planning progress"><li>Details <span aria-hidden="true">✓</span></li><li>Place <span aria-hidden="true">✓</span></li><li aria-current="step">Plan your food</li><li>Review &amp; finalize</li><li>Share</li></ol>
+      <section class="food-selected-panel" aria-labelledby="food-selected-title"><div><span class="eyebrow">YOUR FOOD LINEUP</span><h2 id="food-selected-title">Room for a store and a restaurant</h2><p>Save each option separately. Adding one keeps the other in your plan.</p></div><div id="selected-food-summary"></div></section>
+      <div id="food-tabs" class="food-tabs" role="tablist" aria-label="How to arrange food">
+        <button id="tab-shop" role="tab" type="button" aria-selected="true" aria-controls="food-panel" data-mode="shop"><span class="food-tab-art" aria-hidden="true">🛒</span><span class="food-tab-copy">Shop for ingredients<small>Fresh picks for your picnic basket</small><span id="shop-choice-badge" class="food-choice-badge">Add a grocery store</span></span><span class="food-tab-arrow" aria-hidden="true">↗</span></button>
+        <button id="tab-order" role="tab" type="button" aria-selected="false" aria-controls="food-panel" data-mode="order" tabindex="-1"><span class="food-tab-art" aria-hidden="true">🍽</span><span class="food-tab-copy">Order prepared food<small>Let a local kitchen do the cooking</small><span id="order-choice-badge" class="food-choice-badge">Add a restaurant</span></span><span class="food-tab-arrow" aria-hidden="true">↗</span></button>
+      </div>
+      <section id="food-panel" role="tabpanel" aria-labelledby="tab-shop" tabindex="0">
+        <div class="food-columns">
+          <section class="panel food-menu-panel"><span class="eyebrow">FOOD FOR YOUR WHOLE CREW</span><h2 id="food-menu-title">Your picnic menu</h2><div id="food-menu"></div><h3 id="food-list-title">Your ingredient shopping list</h3><div id="food-list"></div></section>
+          <section class="panel food-nearby-panel" aria-labelledby="nearby-title"><span class="eyebrow">A LITTLE LOCAL HELP</span><h2 id="nearby-title">Find nearby grocery stores</h2><p id="food-search-help">Find places to pick up the ingredients for your picnic.</p><div class="food-search-controls"><div><label for="food-near">Search near</label><select id="food-near"><option value="venue">Picnic venue</option><option value="start">Starting location</option></select></div><button class="primary" id="find-food" type="button">Find grocery stores →</button></div><p id="food-area" class="food-area"></p><p id="food-search-status" role="status" aria-live="polite"></p><div id="food-search-error" role="alert" hidden></div><fieldset id="food-results"><legend class="sr-only">Choose a food business</legend><div id="food-result-cards"></div></fieldset><p class="form-note">Options come from web search. Check the linked sources for opening hours, prices, dietary suitability and pickup or delivery availability.</p></section>
+        </div>
+      </section>
+      <section class="food-decision" aria-labelledby="food-decision-title"><div><span class="eyebrow">ONE MORE DETAIL, SORTED</span><h2 id="food-decision-title">Build your picnic food lineup</h2><p id="food-selection-status">Choose a nearby business, or decide on a store later.</p><p class="form-note">One food allowance covers shopping and ordering together. Purchases happen on the business’s website; saving options does not place an order.</p></div><div class="food-decision-actions"><button class="primary" id="use-food" type="button" disabled>Save grocery store +</button><button class="secondary" id="use-food-later" type="button">Choose a store later</button><button class="primary food-review-button" id="review-food" type="button" disabled>Review picnic plan ↗</button></div></section>
+      <p id="food-save-error" role="alert" hidden></p>
+    </div>
+    <footer class="picnic-footer"><span>GOOD FOOD. GOOD COMPANY.</span><span>Pack it in. Pack it out. Leave it lovely.</span></footer>
+  </main>
+</body>
+</html>
