@@ -57,6 +57,19 @@ class WorkflowTests(unittest.TestCase):
         self.extract.return_value = {'details': DETAILS}
         self.assertEqual(self.step(message='30 people')['stage'], 'places')
 
+    def test_each_required_detail_is_collected_before_place_search(self):
+        fields = ('budget', 'guests', 'food_category', 'location', 'date', 'distance_miles')
+        for index, field in enumerate(fields):
+            self.extract.return_value = {'details': {field: DETAILS[field]}}
+            out = self.step(message=f'My {field} is {DETAILS[field]}')
+            if index < len(fields) - 1:
+                self.assertEqual(out['stage'], 'details')
+                self.assertEqual(out['state'][field], DETAILS[field])
+                self.search.assert_not_called()
+            else:
+                self.assertEqual(out['stage'], 'places')
+                self.search.assert_called_once()
+
     def test_low_budget_cannot_approve_or_share(self):
         self.extract.return_value = {'details': {**DETAILS, 'budget': 100}}
         self.step(); self.step(action='select', venue_id='place-1'); self.step(action='food', food_mode='shop')

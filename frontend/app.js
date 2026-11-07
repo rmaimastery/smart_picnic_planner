@@ -8,6 +8,7 @@ document.body.classList.toggle('picnic-page',isPicnicPage);
 if(isPicnicPage)document.title='Your picnic — Blanket & Bites';
 let plan=null, state={}, busy=false, threadId=null, stage=null;
 let transcript=[];
+let resumedWorkflow=false;
 let latestShared=null;
 let feedbackLoad=0;
 let selectedDetail=null, savedPlan=null;
@@ -51,7 +52,7 @@ function restoreConversation(){
   transcript=cached;
 }
 function ensureThread(){if(!threadId){threadId=newThread();try{localStorage.setItem('picnic-thread',threadId);}catch{}if(!isPicnicPage)history.replaceState(null,'',`/?thread=${threadId}`);}}
-function setBusy(value){busy=value;$('#send-message').disabled=value;$('#generate').disabled=value;$('#new-chat').disabled=value;$('#edit-plan').disabled=value;$('#saved-nav').disabled=value;$('#food-nav').disabled=value;$('#picnic-nav').disabled=value;$('#planner-nav').disabled=value;$('#chat-status').textContent=value?'Putting the details together…':'';$('#chat-form').setAttribute('aria-busy',String(value));for(const id of ['save','save-draft','download','share','export-saved']){const button=$('#'+id);if(button)button.disabled=value||(id==='save'&&(!plan?.food_selection||plan.status==='needs_revision'))||(id==='share'&&stage!=='share'&&stage!=='shared');}$('#start-details').disabled=value;document.querySelectorAll('#details-guide button, #details-guide input, #details-guide select').forEach(el=>el.disabled=value||stage==='shared');}
+function setBusy(value){busy=value;$('#send-message').disabled=value;$('#generate').disabled=value;$('#new-chat').disabled=value;$('#start-new-picnic').disabled=value;$('#edit-plan').disabled=value;$('#saved-nav').disabled=value;$('#food-nav').disabled=value;$('#picnic-nav').disabled=value;$('#planner-nav').disabled=value;$('#chat-status').textContent=value?'Putting the details together…':'';$('#chat-form').setAttribute('aria-busy',String(value));for(const id of ['save','save-draft','download','share','export-saved']){const button=$('#'+id);if(button)button.disabled=value||(id==='save'&&(!plan?.food_selection||plan.status==='needs_revision'))||(id==='share'&&stage!=='share'&&stage!=='shared');}$('#start-details').disabled=value;document.querySelectorAll('#details-guide button, #details-guide input, #details-guide select').forEach(el=>el.disabled=value||stage==='shared');}
 function stateFromPlan(){state={...plan.request,selected_venue:plan.selected_venue};}
 function safeLink(url){try{const u=new URL(url);return ['http:','https:'].includes(u.protocol)?esc(u.href):'#';}catch{return '#';}}
 function newThread(){const bytes=crypto.getRandomValues(new Uint8Array(24));return btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_');}
@@ -70,6 +71,9 @@ function applyResult(result,{openShare=true,announce=true}={}){
 }
 function syncWorkspace(){
   const hasPicnic=Boolean(plan)||stage==='places';
+  const knownDetails=PicnicUI.fields.filter(field=>PicnicUI.hasValue(state,field.key));
+  $('#resume-context').hidden=isPicnicPage||!resumedWorkflow||!knownDetails.length;
+  $('#resume-context-details').textContent=knownDetails.map(field=>`${field.label}: ${field.format(state[field.key])}`).join(' · ');
   $('#picnic-page-heading').hidden=!isPicnicPage;
   if(!plan||globalThis.BBAccount?.state?.email)$('#guest-signin-prompt').hidden=true;
   $('#picnic-empty').hidden=!isPicnicPage||hasPicnic;
@@ -90,7 +94,8 @@ async function send(text){if(busy||!text.trim())return;ensureThread();message('u
 $('#chat-form').onsubmit=e=>{e.preventDefault();send($('#chat-input').value);};
 $('#chat-input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(e.target.value);}};
 document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>send(b.dataset.prompt));
-function reset(){if(busy)return;globalThis.BBPlanPicker?.clear();history.replaceState(null,'',location.pathname);if(isPicnicPage){try{localStorage.removeItem('picnic-thread');}catch{}location.href='/';return;}showPlanner();transcript=[];plan=null;state={};threadId=null;stage=null;selectedDetail=null;try{localStorage.removeItem('picnic-thread');}catch{}$('#messages').replaceChildren();$('#welcome').hidden=false;$('#flow-screen').hidden=true;$('.plan-preview').hidden=true;$('.chat-workspace').classList.remove('has-plan');$('#chat-input').value='';renderGuide();syncWorkspace();$('#chat-input').focus();}
+function reset(){if(busy)return;resumedWorkflow=false;globalThis.BBPlanPicker?.clear();history.replaceState(null,'',location.pathname);if(isPicnicPage){try{localStorage.removeItem('picnic-thread');}catch{}location.href='/';return;}showPlanner();transcript=[];plan=null;state={};threadId=null;stage=null;selectedDetail=null;try{localStorage.removeItem('picnic-thread');}catch{}$('#messages').replaceChildren();$('#welcome').hidden=false;$('#flow-screen').hidden=true;$('.plan-preview').hidden=true;$('.chat-workspace').classList.remove('has-plan');$('#chat-input').value='';renderGuide();syncWorkspace();$('#chat-input').focus();}
+$('#start-new-picnic').onclick=()=>{if(busy)return;reset();continuePlanning();};
 $('#new-chat').onclick=reset;$('#planner-nav').onclick=()=>{if(busy)return;const token=!$('#saved-view').hidden?savedPlan?.workflow_thread:threadId;if(isPicnicPage||!$('#saved-view').hidden){location.href=token?`/?thread=${token}`:'/';return;}showPlanner();$('#chat-input').focus();};
 $('#picnic-nav').onclick=()=>{if(busy)return;const token=$('#saved-view').hidden?threadId:savedPlan?.workflow_thread;location.href=planPage('picnic.html',token);};
 $('#saved-count').textContent=readSaved()?'1':'0';
@@ -195,6 +200,7 @@ async function restore(){
     try{localStorage.setItem('picnic-thread',threadId);}catch{}
     if(!data.reply&&!data.plan&&!data.places)data.reply='Your workflow needs a retry. Send a message to continue.';
     const lastReply=[...transcript].reverse().find(item=>item.role==='assistant')?.text;
+    resumedWorkflow=true;
     applyResult(data,{openShare:false,announce:data.reply!==lastReply});
   }catch(error){toast(error.message);syncWorkspace();}
   finally{setBusy(false);if(!isPicnicPage&&isSavedRoute())showSaved();}
@@ -299,6 +305,7 @@ async function showSaved(id=null){
   $('#saved-sections-nav').innerHTML=sections.map(section=>`<a href="#saved-${section.id}">${section.title}</a>`).join('');
   $('#saved-sections').innerHTML=sections.map(section=>`<section class="panel saved-section" id="saved-${section.id}" aria-labelledby="saved-${section.id}-title"><h2 id="saved-${section.id}-title">${section.title}</h2>${section.body}</section>`).join('');
   $('#resume-saved').disabled=!/^[A-Za-z0-9_-]{32}$/.test(savedPlan.workflow_thread||'');
+  $('#resume-context').hidden=true;
   $('#saved-view').hidden=false;
   $('#workspace-page-label').textContent='Saved plan';
   $('#planner-hero').hidden=true;

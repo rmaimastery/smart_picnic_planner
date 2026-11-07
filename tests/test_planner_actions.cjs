@@ -41,7 +41,7 @@ async function planner({rejectApproval=false, needsRevision=false,pathname='/pic
   const snapshot=()=>JSON.parse(JSON.stringify({...server,state:server.plan.request,reply:'Review your picnic.'}));
   const context=vm.createContext({
     ...(account?{BBAccount:account}:{}),
-    URL,URLSearchParams,Intl,Date,Map,history:{replaceState(){}},location:{hash,pathname,search,href:''},setTimeout:()=>1,clearTimeout(){},
+    URL,URLSearchParams,Intl,Date,Map,matchMedia:()=>({matches:false}),history:{replaceState(){}},location:{hash,pathname,search,href:''},setTimeout:()=>1,clearTimeout(){},
     localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>{storage.set(key,value);if(key==='gather-plan')writes++;},removeItem:key=>storage.delete(key)},
     sessionStorage:{getItem:key=>session.get(key)||null,setItem:(key,value)=>session.set(key,value)},
     document:{body:new Element(),querySelector:selector=>elements.get(selector)||null,querySelectorAll:()=>[],createElement:tag=>new Element(tag)},
@@ -122,6 +122,9 @@ test('chat view offers a handoff without rendering the full picnic or save contr
   assert.equal(p.elements.get('.conversation').hidden,false);
   assert.equal(p.elements.get('.plan-preview').hidden,true);
   assert.equal(p.elements.get('#planner-handoff').hidden,false);
+  assert.equal(p.elements.get('#resume-context').hidden,false);
+  assert.match(p.elements.get('#resume-context-details').textContent,/Guests: 12 people/);
+  assert.match(p.elements.get('#resume-context-details').textContent,/Food: Vegetarian/);
   assert.equal(p.elements.has('#save'),false);
   assert.equal(p.elements.get('#open-picnic').href,'picnic.html#'+'p'.repeat(32));
   p.elements.get('#picnic-nav').onclick();
@@ -132,6 +135,7 @@ test('Your picnic hides the chat and makes the review controls available',async(
   const p=await planner();
   assert.equal(p.elements.get('.conversation').hidden,true);
   assert.equal(p.elements.get('#details-guide').hidden,true);
+  assert.equal(p.elements.get('#resume-context').hidden,true);
   assert.equal(p.elements.get('#picnic-page-heading').hidden,false);
   assert.equal(p.elements.get('.plan-preview').hidden,false);
   assert.equal(p.elements.get('#picnic-nav').classList.contains('active'),true);
@@ -160,6 +164,18 @@ test('conversation history survives navigation and restore does not repeat the r
   assert.equal(back.elements.get('#messages').children.length,2);
 });
 
+
+test('starting fresh from the resume notice clears collected details and opens the first required step',async()=>{
+  const p=await planner({pathname:'/'});
+  const previousRequests=p.calls.length;
+  p.elements.get('#start-new-picnic').onclick();
+  assert.equal(p.elements.get('#resume-context').hidden,true);
+  assert.equal(p.elements.get('#details-count').textContent,'0 of 6 collected');
+  assert.equal(p.elements.get('#detail-step-form').hidden,false);
+  assert.match(p.elements.get('#detail-step-field').innerHTML,/What is your total picnic budget/);
+  assert.equal(p.storage.has('picnic-thread'),false);
+  assert.equal(p.calls.length,previousRequests);
+});
 
 test('signed-in saves wait for the server and retain the canonical account timestamp',async()=>{
   let resolveSave;
