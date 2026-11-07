@@ -6,8 +6,9 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root=path.join(__dirname,'../frontend');
 
-async function planner({rejectApproval=false, needsRevision=false,pathname='/picnic.html',session=new Map(),empty=false}={}) {
+async function planner({rejectApproval=false, needsRevision=false,pathname='/picnic.html',session=new Map(),empty=false,account=null,hash='',search='',storedPlan=null}={}) {
   const elements=new Map(), storage=new Map(empty?[]:[['picnic-thread','p'.repeat(32)]]);
+  if(storedPlan)storage.set('gather-plan',JSON.stringify(storedPlan));
   const calls=[];
   let writes=0;
   class Element {
@@ -39,7 +40,8 @@ async function planner({rejectApproval=false, needsRevision=false,pathname='/pic
   }};
   const snapshot=()=>JSON.parse(JSON.stringify({...server,state:server.plan.request,reply:'Review your picnic.'}));
   const context=vm.createContext({
-    URL,Intl,Date,Map,location:{hash:'',pathname,search:'',href:''},setTimeout:()=>1,clearTimeout(){},
+    ...(account?{BBAccount:account}:{}),
+    URL,URLSearchParams,Intl,Date,Map,history:{replaceState(){}},location:{hash,pathname,search,href:''},setTimeout:()=>1,clearTimeout(){},
     localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>{storage.set(key,value);if(key==='gather-plan')writes++;},removeItem:key=>storage.delete(key)},
     sessionStorage:{getItem:key=>session.get(key)||null,setItem:(key,value)=>session.set(key,value)},
     document:{body:new Element(),querySelector:selector=>elements.get(selector)||null,querySelectorAll:()=>[],createElement:tag=>new Element(tag)},
@@ -53,7 +55,8 @@ async function planner({rejectApproval=false, needsRevision=false,pathname='/pic
     },
   });
   vm.runInContext(fs.readFileSync(path.join(root,'plan-ui.js'),'utf8'),context);
-  const source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('if(threadId)restore();','if(threadId)globalThis.ready=restore();');
+  vm.runInContext(fs.readFileSync(path.join(root,'invite-data.js'),'utf8'),context);
+  const source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('if(threadId)restore();','if(threadId)globalThis.ready=restore();').replace("isSavedRoute())showSaved();else","isSavedRoute())globalThis.ready=showSaved();else");
   vm.runInContext(source,context);
   await context.ready;
   return {elements,storage,calls,session,location:context.location,get writes(){return writes;},revise(){server.plan.status='pending_approval';server.stage='approval';context.revised=snapshot();vm.runInContext('applyResult(revised,{openShare:false})',context);}};
@@ -76,8 +79,12 @@ test('save and finalize unlocks and highlights sharing, including a second save'
 
 test('save draft keeps sharing locked and explains how to finalize',async()=>{
   const p=await planner();
-  p.elements.get('#save-draft').onclick();
+  await p.elements.get('#save-draft').onclick();
   assert.equal(JSON.parse(p.storage.get('gather-plan')).status,'pending_approval');
+  assert.equal(p.elements.get('#guest-signin-prompt').hidden,false);
+  p.elements.get('#dismiss-guest-signin').onclick();
+  await p.elements.get('#save-draft').onclick();
+  assert.equal(p.elements.get('#guest-signin-prompt').hidden,true);
   assert.equal(p.elements.get('#share').disabled,true);
   assert.match(p.elements.get('#toast').textContent,/Save & finalize/);
   assert.equal(p.calls.filter(call=>call.payload?.action==='approve').length,0);
@@ -105,7 +112,7 @@ test('budget revisions block finalization and still allow a draft save',async()=
   assert.equal(p.elements.get('#save').disabled,true);
   await p.elements.get('#save').onclick();
   assert.equal(p.calls.filter(call=>call.payload?.action==='approve').length,0);
-  p.elements.get('#save-draft').onclick();
+  await p.elements.get('#save-draft').onclick();
   assert.equal(JSON.parse(p.storage.get('gather-plan')).status,'needs_revision');
   assert.equal(p.elements.get('#share').disabled,true);
 });
@@ -151,4 +158,73 @@ test('conversation history survives navigation and restore does not repeat the r
   assert.equal(JSON.parse(session.get(key)).length,2);
   const back=await planner({pathname:'/',session});
   assert.equal(back.elements.get('#messages').children.length,2);
+});
+
+
+test('signed-in saves wait for the server and retain the canonical account timestamp',async()=>{
+  let resolveSave;
+  const account={ready:Promise.resolve(),state:{email:'host@example.test'},save:()=>new Promise(resolve=>{resolveSave=resolve;})};
+  const p=await planner({account});
+  const pending=p.elements.get('#save-draft').onclick();
+  assert.equal(p.writes,0);
+  assert.equal(p.elements.get('#save-draft').disabled,true);
+  resolveSave({id:'a'.repeat(32),email:'host@example.test',saved_at:'2026-11-06T18:30:00+00:00'});
+  await pending;
+  const saved=JSON.parse(p.storage.get('gather-plan'));
+  assert.equal(saved.saved_at,'2026-11-06T18:30:00+00:00');
+  assert.equal(saved.account_plan_id,'a'.repeat(32));
+  assert.equal(saved.account_email,'host@example.test');
+  assert.equal(p.elements.get('#guest-signin-prompt').hidden,true);
+  assert.equal(p.elements.get('#save-draft').disabled,false);
+});
+
+test('an account save failure preserves a browser copy without claiming account success',async()=>{
+  const account={ready:Promise.resolve(),state:{email:'host@example.test'},save:async()=>{throw Error('Account connection unavailable.');}};
+  const p=await planner({account});
+  await p.elements.get('#save-draft').onclick();
+  assert.equal(p.writes,1);
+  assert.equal(JSON.parse(p.storage.get('gather-plan')).account_email,'host@example.test');
+  assert.match(p.elements.get('#toast').textContent,/Account connection unavailable/);
+  assert.equal(p.elements.get('#share').disabled,true);
+});
+
+
+test('Your picnic refreshes a compact feedback summary and links to the full account view',async()=>{
+  let reads=0;
+  const account={ready:Promise.resolve(),state:{email:'host@example.test'},api:async()=>({id:'c'.repeat(32),feedback:[{email:'guest@example.test',response:++reads===1?'Suggest a change':'Looks good',comment:'Guest comment stays in My Picnic.',created_at:'2026-11-06T18:30:00Z'}]})};
+  const p=await planner({account});
+  for(let i=0;i<10;i++)await Promise.resolve();
+  assert.equal(p.elements.get('#picnic-crew-feedback').hidden,false);
+  assert.match(p.elements.get('#picnic-crew-summary').innerHTML,/1<\/strong>Suggest a change/);
+  assert.equal(p.elements.has('#picnic-crew-responses'),false);
+  assert.equal(p.elements.get('#manage-picnic-crew').href,'account.html?plan='+'c'.repeat(32));
+  await p.elements.get('#refresh-picnic-feedback').onclick();
+  assert.match(p.elements.get('#picnic-crew-summary').innerHTML,/1<\/strong>Looks good/);
+});
+
+
+test('Create a Picnic Invite prepares public details and opens the editor without publishing',async()=>{
+  const p=await planner();
+  await p.elements.get('#download').onclick();
+  assert.equal(p.location.href,'invite.html');
+  const draft=JSON.parse(p.session.get('bb-picnic-invite'));
+  assert.equal(draft.fields.venue,'Park');assert.equal(draft.fields.food,'Wraps');
+  assert.equal('request' in draft,false);assert.equal('workflow_thread' in draft.fields,false);
+  assert.equal(p.calls.some(call=>call.payload?.action==='share'),false);
+});
+
+
+test('Saved plan loads the requested account snapshot without overwriting another browser save',async()=>{
+  const requests=[];
+  const copy={id:'same-legacy-id',request:{date:'2027-06-12',guests:10,location:'Browser Park'},venues:[{id:'park',name:'Browser Park'}],budget:{},warnings:[]};
+  const id='b'.repeat(32),thread='s'.repeat(32),savedAt='2026-11-01T18:00:00Z';
+  const snapshot={...copy,request:{...copy.request,guests:22,location:'Selected Park'},venues:[{id:'park',name:'Selected Park'}],selected_venue:'park',total:0,remaining:0,status:'approved',menu:[],schedule:[],shopping_list:[],guest_assignments:[],warnings:[]};
+  const account={ready:Promise.resolve(),state:{email:'host@example.test'},api:async url=>{requests.push(url);return {role:'organizer',plan:snapshot,thread_id:thread,saved_at:savedAt};}};
+  const p=await planner({pathname:'/',hash:'#saved',search:'?plan='+id,storedPlan:copy,account});
+  assert.deepEqual(requests,['/api/account/plans/'+id]);assert.equal(p.writes,0);
+  assert.equal(JSON.parse(p.storage.get('gather-plan')).request.location,'Browser Park');
+  assert.match(p.elements.get('#saved-description').textContent,/22 guests · Selected Park/);
+  assert.match(p.elements.get('#saved-copy-note').textContent,/saved account snapshot/);
+  p.elements.get('#resume-saved').onclick();
+  assert.equal(p.location.href,'picnic.html?plan='+id+'#'+thread);
 });

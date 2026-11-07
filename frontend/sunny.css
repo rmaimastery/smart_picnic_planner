@@ -149,6 +149,8 @@
 .saved-cover-copy .eyebrow { color: #79613e; font-size: 9px; letter-spacing: 1.6px; }
 .saved-heading h1 { font-size: 38px; letter-spacing: -1.4px; margin: 12px 0; }
 .saved-heading p { color: #57623d; }
+.saved-heading .saved-as-of { display: inline-block; margin-top: 12px; padding: 8px 12px; border: 1px solid #d8d3b5; border-radius: 8px; background: #fffdf2; color: #173b65; font-size: 14px; font-weight: 600; }
+.saved-heading .saved-tagline { color: #173b65; font: 400 22px/1.5 Manrope, system-ui, sans-serif; margin: 0 0 16px; }
 .saved-cover-tag { display: block; margin-top: 16px; color: #75663e; font: italic 15px Georgia, serif; }
 .saved-cover-tag>span { color: #af4c30; margin-right: 4px; }
 .saved-heading .actions { position: relative; z-index: 1; display: flex; margin-top: 22px; width: fit-content; }
@@ -276,7 +278,7 @@
 .chat-page .sidebar .nav-picnic { --nav-fill:#dff0ff; --nav-edge:#9ec4e2; --nav-ink:#305b7b; }
 .chat-page .sidebar .nav-food { --nav-fill:#ffe5cf; --nav-edge:#e6b28e; --nav-ink:#89472b; }
 .chat-page .sidebar .nav-saved { --nav-fill:#eee3ff; --nav-edge:#c7b0e4; --nav-ink:#6b4a91; }
-.chat-page .sidebar .nav-feedback { --nav-fill:#e7f2ce; --nav-edge:#b5ca8b; --nav-ink:#4f702b; }
+.chat-page .sidebar .nav-contact { --nav-fill:#ffe5ed; --nav-edge:#dda7b8; --nav-ink:#8d3e59; }
 .chat-page .sidebar .nav.active { background:var(--nav-fill); border-color:var(--nav-edge); box-shadow:0 4px 0 color-mix(in srgb,var(--nav-edge) 30%,transparent); }
 .chat-page .sidebar .nav:hover:not(:disabled) { transform:translateY(-2px); background:var(--nav-fill); border-color:var(--nav-edge); color:#163d29; box-shadow:0 6px 14px #45522b13; }
 .chat-page .sidebar .nav .nav-icon { display:grid; place-items:center; width:35px; height:39px; flex-shrink:0; color:var(--nav-ink); border-radius:12px; background:var(--nav-fill); border:1px solid #fff9; box-shadow:0 2px 0 #5d562b09; }
@@ -296,10 +298,11 @@
 .planner-handoff h2 { font-size:19px; margin-bottom:8px; }
 .planner-handoff p { font-size:13px; color:#4c613c; margin-bottom:14px; }
 .planner-handoff .primary { display:inline-flex; font-size:12px; padding:11px 15px; }
-.picnic-page-heading { max-width:1280px; margin:26px auto 0; padding:34px 38px; min-height:235px; border:1px solid #d7dec0; border-radius:24px; background:linear-gradient(90deg,#eef4d5 0%,#eef4d5 45%,#eef4d5e8 58%,#eef4d500 83%),url('images/picnic-meadow.jpg') center 61%/cover; }
+.picnic-page-heading { --picnic-intro-size:38px; max-width:1280px; margin:26px auto 0; padding:34px 38px; min-height:235px; border:1px solid #d7dec0; border-radius:24px; background:linear-gradient(90deg,#eef4d5 0%,#eef4d5 45%,#eef4d5e8 58%,#eef4d500 83%),url('images/picnic-meadow.jpg') center 61%/cover; }
 .picnic-page-heading .eyebrow { font-size:9px; letter-spacing:1.7px; }
-.picnic-page-heading h1 { max-width:65%; font-size:38px; margin:14px 0; letter-spacing:-1.3px; }
-.picnic-page-heading p { max-width:60%; color:#49623b; font-size:14px; margin-bottom:20px; }
+.picnic-page-heading > h1, .picnic-page-heading > p { max-width:65%; font-family:Manrope,system-ui,sans-serif; font-size:var(--picnic-intro-size); line-height:1.35; letter-spacing:0; }
+.picnic-page-heading > h1 { font-weight:800; margin:14px 0; }
+.picnic-page-heading > p { color:#173b65; font-weight:400; margin-bottom:20px; }
 .picnic-page-heading .secondary { font-size:12px; background:#fffef7; }
 .picnic-page .chat-workspace { display:block; max-width:1280px; margin-top:24px; }
 .picnic-page .plan-preview { padding:0; width:100%; }
@@ -318,7 +321,7 @@
 .picnic-empty h2 { font-size:25px; margin-bottom:14px; }
 .picnic-empty p { margin-bottom:24px; }
 .picnic-empty .primary { display:inline-flex; font-size:14px; }
-@media(max-width:1200px){.chat-page .sidebar{width:240px}.chat-main{margin-left:240px}.chat-page .sidebar .nav{gap:8px;padding:11px}.nav-copy strong{font-size:11px}.nav-copy small{font-size:8px}.picnic-page-heading h1{font-size:33px}.picnic-page .venue-results{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:800px){.chat-page .sidebar{width:100%;position:static;flex-wrap:wrap;gap:12px;overflow:visible}.chat-page .sidebar nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:100%;margin:0}.chat-page .sidebar .nav{margin:0;min-height:54px;padding:10px;gap:7px}.chat-page .sidebar .nav .nav-icon{width:27px;height:31px;border-radius:9px}.nav-icon svg{width:20px;height:20px}.nav-copy strong{font-size:10px}.nav-copy small,.nav-arrow{display:none}.chat-main{margin-left:0}.picnic-page-heading{padding:28px}.picnic-page-heading h1{max-width:85%;font-size:30px}.picnic-page-heading p{max-width:80%}.picnic-page .plan-preview .panel{padding:24px}.picnic-page .plan-preview .story-grid{grid-template-columns:1fr;gap:0}}
-@media(max-width:600px){.chat-page .sidebar nav{grid-template-columns:repeat(2,minmax(0,1fr))}.chat-page .sidebar .nav{min-height:52px}.nav-copy strong{font-size:11px}.picnic-page-heading{padding:24px;border-radius:19px;background:linear-gradient(90deg,#eef4d5f5,#eef4d5d9),url('images/picnic-meadow.jpg') center/cover}.picnic-page-heading h1,.picnic-page-heading p{max-width:100%}.picnic-page-heading h1{font-size:29px}.picnic-page .venue-results{grid-template-columns:1fr}.picnic-page .plan-preview .panel{padding:20px 17px}.planner-handoff{padding:17px;gap:11px}.planner-handoff h2{font-size:17px}.handoff-icon{width:35px;height:38px;border-radius:11px;font-size:21px}}
+@media(max-width:1200px){.chat-page .sidebar{width:240px}.chat-main{margin-left:240px}.chat-page .sidebar .nav{gap:8px;padding:11px}.nav-copy strong{font-size:11px}.nav-copy small{font-size:8px}.picnic-page-heading{--picnic-intro-size:33px}.picnic-page .venue-results{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){.chat-page .sidebar{width:100%;position:static;flex-wrap:wrap;gap:12px;overflow:visible}.chat-page .sidebar nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:100%;margin:0}.chat-page .sidebar .nav{margin:0;min-height:54px;padding:10px;gap:7px}.chat-page .sidebar .nav .nav-icon{width:27px;height:31px;border-radius:9px}.nav-icon svg{width:20px;height:20px}.nav-copy strong{font-size:10px}.nav-copy small,.nav-arrow{display:none}.chat-main{margin-left:0}.picnic-page-heading{padding:28px}.picnic-page-heading{--picnic-intro-size:30px}.picnic-page-heading h1{max-width:85%}.picnic-page-heading p{max-width:80%}.picnic-page .plan-preview .panel{padding:24px}.picnic-page .plan-preview .story-grid{grid-template-columns:1fr;gap:0}}
+@media(max-width:600px){.chat-page .sidebar nav{grid-template-columns:repeat(2,minmax(0,1fr))}.chat-page .sidebar .nav{min-height:52px}.nav-copy strong{font-size:11px}.picnic-page-heading{padding:24px;border-radius:19px;background:linear-gradient(90deg,#eef4d5f5,#eef4d5d9),url('images/picnic-meadow.jpg') center/cover}.picnic-page-heading h1,.picnic-page-heading p{max-width:100%}.picnic-page-heading{--picnic-intro-size:29px}.picnic-page .venue-results{grid-template-columns:1fr}.picnic-page .plan-preview .panel{padding:20px 17px}.planner-handoff{padding:17px;gap:11px}.planner-handoff h2{font-size:17px}.handoff-icon{width:35px;height:38px;border-radius:11px;font-size:21px}}
 @media(prefers-reduced-motion:reduce){.chat-page .sidebar .nav:hover{transform:none}}

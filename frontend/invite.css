@@ -1,0 +1,27 @@
+.invite-main { padding-bottom:32px; }
+.invite-main>header,.invite-main>section,.invite-main>footer { max-width:1280px; margin-left:auto; margin-right:auto; }
+.invite-heading { margin-top:28px; padding:28px 32px; border:1px solid #e4cf86; border-radius:22px; background:linear-gradient(120deg,#fff0b6,#eaf2d5); }
+.invite-heading h1 { margin:14px 0; font-size:34px; }
+.invite-heading p { color:#173b65; font-size:17px; }
+.invite-editor { display:grid; grid-template-columns:minmax(280px,.8fr) minmax(340px,1.2fr); gap:28px; align-items:start; margin-top:26px; }
+.invite-controls { padding:26px; border:1px solid #dde1c9; border-radius:19px; background:#fffefa; }
+.invite-controls h2 { font-size:24px; margin-bottom:14px; }
+.invite-controls>p { font-size:14px; }
+.invite-controls form { margin-top:24px; }
+.invite-controls label { margin-top:20px; font-size:14px; }
+.invite-controls input:not([type=checkbox]),.invite-controls textarea { background:#fff; font-size:15px; }
+.invite-field-pair { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.invite-controls .form-note { text-align:left; color:#4c613c; line-height:1.7; }
+.invite-qr-option { display:flex; align-items:center; gap:10px; }
+.invite-qr-option input { margin:0; }
+.invite-privacy-note { padding:16px; margin-top:24px; border-radius:12px; background:#e8f2fa; color:#173b65; font-size:13px; line-height:1.7; }
+.invite-output { min-width:0; padding:20px; border:1px solid #dfe0cd; border-radius:20px; background:#fffefa; }
+.invite-preview-label { display:flex; justify-content:space-between; gap:12px; margin-bottom:16px; color:#526044; font-size:10px; font-weight:800; letter-spacing:1px; }
+#invite-canvas { display:block; width:100%; height:auto; border:1px solid #e4d6a8; border-radius:13px; box-shadow:0 8px 25px #5b552b13; }
+.invite-output .actions { margin-top:20px; }
+.invite-output .actions button { font-size:13px; }
+#invite-status { margin:18px 0; color:#173b65; font-size:14px; }
+#invite-caption-details { margin-top:20px; border-top:1px solid #dfe0cd; padding-top:18px; }
+#invite-caption { margin-top:16px; font-size:13px; }
+@media(max-width:1100px){.invite-editor{grid-template-columns:1fr}.invite-output{max-width:720px;width:100%;margin:auto}}
+@media(max-width:600px){.invite-heading{padding:24px 20px}.invite-heading h1{font-size:27px}.invite-heading p{font-size:15px}.invite-controls,.invite-output{padding:20px 16px}.invite-field-pair{grid-template-columns:1fr}.invite-output .actions{flex-direction:column}.invite-main>header{height:auto;min-height:76px;gap:12px;flex-wrap:wrap;padding:12px 0}}

@@ -15,7 +15,7 @@ const plan = () => ({
   menu:['Wraps'], shopping_list:['12 wraps'],
 });
 
-async function page({failSearch=false, stage='food'}={}) {
+async function page({failSearch=false, stage='food',picker=null}={}) {
   const elements = new Map(), calls = [], storage = new Map();
   const serverPlan=plan();
   let radios = [];
@@ -36,7 +36,7 @@ async function page({failSearch=false, stage='food'}={}) {
   tabs[0].dataset.mode='shop';tabs[1].dataset.mode='order';
   const location={hash:'#'+'p'.repeat(32),href:'',reloadCount:0,reload(){this.reloadCount++;}};
   const context=vm.createContext({
-    Intl,URL,Date,Map,location,
+    Intl,URL,Date,Map,location,...(picker?{BBPlanPicker:picker}:{}),
     localStorage:{setItem:(key,value)=>storage.set(key,value)},
     PicnicUI:{foodSummary:picnic=>JSON.stringify(picnic.food_selections||{})},
     document:{body:new Element('body'),querySelector:selector=>{
@@ -56,7 +56,7 @@ async function page({failSearch=false, stage='food'}={}) {
     },
   });
   // Capture the page's existing startup promise so assertions wait for loading.
-  vm.runInContext(source.replace(/\nload\(\);\s*$/, '\nglobalThis.ready=load();'),context);
+  vm.runInContext(source.replace('load().then(', 'globalThis.ready=load().then('),context);
   await context.ready;
   return {elements,calls,storage,location,get radios(){return radios;}};
 }
@@ -150,4 +150,16 @@ test('switching tabs preserves an unsaved radio selection',async()=>{
   p.elements.get('#tab-shop').onclick();
   assert.equal(p.elements.get('#use-food').disabled,false);
   assert.match(p.elements.get('#food-result-cards').innerHTML,/checked/);
+});
+
+
+test('switching food plans requires saving selected businesses and navigates using the chosen workflow',async()=>{
+  let config;
+  const picker={init:async value=>{config=value;},current:()=>null};
+  const p=await page({picker});
+  await p.elements.get('#find-food').onclick();p.radios[0].onchange();
+  assert.match(config.beforeSelect(),/Save your selected food/);
+  await p.elements.get('#use-food').onclick();assert.equal(config.beforeSelect(),false);
+  await config.onSelect({id:'b'.repeat(32),thread_id:'y'.repeat(32)});
+  assert.equal(p.location.href,'food.html?plan='+'b'.repeat(32)+'#'+'y'.repeat(32));
 });

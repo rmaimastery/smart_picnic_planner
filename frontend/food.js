@@ -77,7 +77,7 @@ async function findFood() {
   setBusy(true); $('#food-search-error').hidden = true;
   $('#food-search-status').textContent = 'Looking for nearby options…';
   try {
-    const result = await jsonResponse(await fetch(endpoint + '/food-options', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode, near:$('#food-near').value})}));
+    const result = await jsonResponse(await fetch(endpoint + '/food-options', {method:'POST', headers:{'Content-Type':'application/json','X-BB-Request':'1'}, body:JSON.stringify({mode, near:$('#food-near').value})}));
     searches.set(`${mode}:${$('#food-near').value}`, result);
     options = result.options; searchId = result.search_id; selected = null;
     drafts.delete(`${mode}:${$('#food-near').value}`);
@@ -94,7 +94,7 @@ async function saveChoice(later) {
   setBusy(true); $('#food-save-error').hidden = true;
   $('#food-selection-status').textContent = 'Saving your food choice…';
   try {
-    const result=await jsonResponse(await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+    const result=await jsonResponse(await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json','X-BB-Request':'1'}, body:JSON.stringify({
       thread_id:thread, today: (()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})(), action:'food', food_mode:mode, food_near:$('#food-near').value,
       food_search_id:later ? null : searchId, food_option_id:later ? null : selected,
     })}));
@@ -123,13 +123,13 @@ $('.skip-link').onclick = event => {event.preventDefault(); $(`#tab-${mode}`).fo
 $('#find-food').onclick = findFood;
 $('#use-food').onclick = () => saveChoice(false);
 $('#use-food-later').onclick = () => saveChoice(true);
-$('#review-food').onclick=()=>{if(!busy&&!readonly&&Object.keys(savedSelections()).length&&!drafts.size){try{localStorage.setItem('picnic-thread',thread);}catch{}location.href=`picnic.html#${thread}`;}};
+$('#review-food').onclick=()=>{if(!busy&&!readonly&&Object.keys(savedSelections()).length&&!drafts.size){try{localStorage.setItem('picnic-thread',thread);}catch{}location.href=`picnic.html${globalThis.BBPlanPicker?.current()?.id?"?plan="+BBPlanPicker.current().id:""}#${thread}`;}};
 $('#edit-food-copy').onclick = async () => {
   if (busy || !readonly) return;
   setBusy(true);
   $('#food-copy-status').textContent = 'Creating an editable version with your picnic details…';
   try {
-    const result = await jsonResponse(await fetch(endpoint + '/food-copy', {method:'POST'}));
+    const result = await jsonResponse(await fetch(endpoint + '/food-copy', {method:'POST',headers:{'X-BB-Request':'1'}}));
     try {localStorage.setItem('picnic-thread', result.thread_id);} catch {}
     location.href = `food.html#${result.thread_id}`;
     // A new workflow token changes only the fragment, so reload the page state.
@@ -161,4 +161,8 @@ async function load() {
     setBusy(false);
   } catch (error) {$('#food-page-status').textContent = error instanceof TypeError ? 'Cannot reach the planner. Check your connection and reload.' : error.message;}
 }
-load();
+load().then(async()=>{
+  await globalThis.BBPlanPicker?.init({currentThread:thread,beforeSelect:()=>busy?'Please wait for your food request to finish.':drafts.size?'Save your selected food choices before switching picnics.':false,onSelect:async item=>{location.href=`food.html?plan=${item.id}#${item.thread_id}`;}});
+  const selected=globalThis.BBPlanPicker?.current();
+  if(selected)$('#back-to-picnic').href=`picnic.html?plan=${selected.id}#${thread}`;
+});

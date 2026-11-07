@@ -57,5 +57,21 @@ const PicnicUI = (() => {
       {id:'backup', title:'Backup & reminders', body:`<p>${escape(plan.backup_plan || 'No backup plan saved.')}</p>${list(plan.warnings, 'No additional reminders saved.')}`},
     ];
   }
-  return {fields, hasValue, nextMissing, steps, savedSections, foodSummary};
+  function crewFeedback(feedback) {
+    const latest=new Map();
+    for(const item of feedback||[]){
+      latest.delete(item.email);
+      latest.set(item.email,item);
+    }
+    const responses=[...latest.values()].reverse();
+    const choices=[['Looks good','good'],['Suggest a change','change'],['Cannot make it','away']];
+    const summary=`<p class="crew-response-count">${responses.length} guest${responses.length===1?' has':'s have'} responded</p><div class="crew-response-totals">${choices.map(([label,style])=>`<span class="crew-total ${style}"><strong>${responses.filter(item=>item.response===label).length}</strong>${label}</span>`).join('')}</div>`;
+    const body=responses.length?responses.map(item=>{
+      const date=new Date(item.created_at);
+      const when=Number.isNaN(date.getTime())?'Date unavailable':new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(date);
+      return `<article class="review-item crew-response"><strong>${escape(item.email)}</strong><span>${escape(item.response)}</span>${item.comment?`<p>${escape(item.comment)}</p>`:''}<time>${escape(when)}</time></article>`;
+    }).join(''):'<p class="account-empty-note">No guest feedback yet. Your crew’s responses will appear here.</p>';
+    return {summary,body};
+  }
+  return {fields, hasValue, nextMissing, steps, savedSections, foodSummary, crewFeedback};
 })();
