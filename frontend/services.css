@@ -1,0 +1,58 @@
+.services-main { padding-bottom: 36px; }
+.services-main > header, .services-main > section, .services-main > footer { max-width: 1280px; margin-left: auto; margin-right: auto; }
+.services-hero { position: relative; overflow: hidden; margin-top: 26px; padding: 44px; min-height: 340px; border: 1px solid #e2d6a3; border-radius: 26px; background: linear-gradient(90deg,#fff0b6 0%,#fff0b6 42%,#fff0b6e8 57%,#fff0b600 88%),url('images/picnic-hero.jpg') center/cover; }
+.services-hero > div { position: relative; z-index: 1; max-width: 64%; }
+.services-hero h1 { margin: 18px 0; font-size: clamp(30px,3vw,44px); line-height: 1.2; letter-spacing: -1.4px; }
+.services-hero p { max-width: 550px; color: #173b65; font-size: 17px; line-height: 1.65; }
+.services-hero .primary { display: inline-flex; margin-top: 24px; }
+.services-sticker { position: absolute; right: 30px; bottom: 30px; display: grid; place-items: center; width: 136px; height: 136px; padding: 15px; border: 2px solid #fff9; border-radius: 50%; background: #eaf2cf; box-shadow: 0 5px 20px #324b3026; color: #244b36; font: 800 16px/1.4 Manrope,system-ui,sans-serif; text-align: center; transform: rotate(9deg); }
+.services-sticker > span { color: #9b5b18; font-size: 29px; }
+.service-packages { margin-top: 40px; scroll-margin-top: 24px; }
+.packages-heading h2 { margin: 10px 0; font-size: 28px; }
+.packages-heading p { color: #4c613c; font-size: 15px; }
+.package-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; margin-top: 24px; align-items: stretch; }
+.package-card { --package-accent:#ecd181; display: flex; flex-direction: column; padding: 28px 24px; min-width: 0; border: 1px solid var(--package-accent); border-top: 6px solid var(--package-accent); border-radius: 20px; background: #fffdf5; box-shadow: 0 7px 18px #43533408; }
+.package-fun { background: linear-gradient(160deg,#fff0b6,#fffdf5 52%); }
+.package-plan { --package-accent:#b4cea1; background: linear-gradient(160deg,#e9f3d5,#fffdf5 52%); }
+.package-custom { --package-accent:#e2b29b; background: linear-gradient(160deg,#ffe4d4,#fffdf5 52%); }
+.package-icon { display: grid; place-items: center; align-self: flex-start; width: 52px; height: 52px; margin-bottom: 20px; border: 1px solid #fff; border-radius: 16px; background: #fff9; color: #936020; font-size: 31px; }
+.package-kicker { color: #526044; font-size: 9px; font-weight: 700; line-height: 1.5; letter-spacing: 1.4px; }
+.package-card h3 { margin: 10px 0 14px; color: #244b36; font: 800 25px/1.25 Manrope,system-ui,sans-serif; letter-spacing: -.7px; }
+.package-intro { color: #40533e; font-size: 14px; line-height: 1.7; }
+.package-price { margin-top: 22px; padding: 18px 0; border-top: 1px solid var(--package-accent); border-bottom: 1px solid var(--package-accent); }
+.package-price strong { display: block; color: #173b65; font: 800 21px/1.4 Manrope,system-ui,sans-serif; }
+.package-price span { display: block; margin-top: 7px; color: #4d5c45; font-size: 12px; line-height: 1.6; }
+.package-card ul { padding-left: 20px; margin: 20px 0; color: #344f39; font-size: 13px; line-height: 1.8; }
+.package-card li + li { margin-top: 8px; }
+.package-note { margin-top: auto; margin-bottom: 20px; color: #526044; font-size: 12px; line-height: 1.7; }
+.package-card .primary { display: flex; justify-content: center; text-align: center; font-size: 13px; }
+.service-contact { display: grid; grid-template-columns: 1.2fr 1fr; gap: 36px; margin-top: 36px; margin-bottom: 24px; padding: 34px; border: 1px solid #b5cddd; border-radius: 22px; background: #e8f2fa; scroll-margin-top: 24px; }
+.service-contact h2 { margin: 12px 0; color: #173b65; font-size: 27px; line-height: 1.3; }
+.service-contact p { color: #37546a; font-size: 14px; }
+.service-contact .secondary { margin-top: 18px; }
+.contact-details { display: flex; flex-direction: column; justify-content: center; gap: 16px; min-width: 0; }
+.contact-demo { align-self: flex-start; padding: 6px 10px; border: 1px solid #b5cddd; border-radius: 20px; color: #37546a; background: #fff9; font-size: 11px; font-weight: 700; }
+.contact-details a { color: #173b65; font: 700 17px/1.5 Manrope,system-ui,sans-serif; text-decoration: underline; text-underline-offset: 4px; overflow-wrap: anywhere; }
+.contact-details p { font-size: 12px; }
+@media (max-width:1100px) {
+  .package-grid { grid-template-columns: 1fr; }
+  .package-card { padding: 26px; }
+  .package-card .primary { align-self: flex-start; }
+  .services-hero { padding: 32px; }
+  .services-hero > div { max-width: 75%; }
+  .services-sticker { width: 108px; height: 108px; font-size: 13px; right: 18px; bottom: 18px; }
+}
+@media (max-width:600px) {
+  .services-main { padding-bottom: 24px; }
+  .services-main > header { height: auto; min-height: 76px; gap: 12px; padding: 12px 0; flex-wrap: wrap; }
+  .services-hero { padding: 26px 22px; border-radius: 20px; background: linear-gradient(90deg,#fff0b6f5,#fff0b6dc),url('images/picnic-hero.jpg') center/cover; }
+  .services-hero > div { max-width: 100%; }
+  .services-hero p { font-size: 16px; }
+  .services-sticker { display: none; }
+  .packages-heading h2 { font-size: 24px; }
+  .package-card { padding: 24px 20px; }
+  .package-card .primary { align-self: stretch; }
+  .service-contact { grid-template-columns: 1fr; padding: 26px 22px; gap: 26px; }
+  .service-contact h2 { font-size: 24px; }
+  .contact-details a { font-size: 16px; }
+}

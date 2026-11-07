@@ -33,9 +33,10 @@ class WorkflowTests(unittest.TestCase):
         self.generate.assert_not_called()
         self.assertEqual(run(self.thread, read_only=True)['places'], PLACES)
         out = self.step(action='select', venue_id='place-1')
-        self.assertEqual(out['stage'], 'approval')
+        self.assertEqual(out['stage'], 'food')
         self.assertIsNone(out['shared'])
         self.assertEqual(out['plan']['menu'], NARRATIVE['menu'])
+        self.step(action='food', food_mode='shop')
         out = self.step(action='approve')
         self.assertEqual(out['stage'], 'share')
         self.assertEqual(out['plan']['status'], 'approved')
@@ -56,16 +57,29 @@ class WorkflowTests(unittest.TestCase):
         self.extract.return_value = {'details': DETAILS}
         self.assertEqual(self.step(message='30 people')['stage'], 'places')
 
+    def test_each_required_detail_is_collected_before_place_search(self):
+        fields = ('budget', 'guests', 'food_category', 'location', 'date', 'distance_miles')
+        for index, field in enumerate(fields):
+            self.extract.return_value = {'details': {field: DETAILS[field]}}
+            out = self.step(message=f'My {field} is {DETAILS[field]}')
+            if index < len(fields) - 1:
+                self.assertEqual(out['stage'], 'details')
+                self.assertEqual(out['state'][field], DETAILS[field])
+                self.search.assert_not_called()
+            else:
+                self.assertEqual(out['stage'], 'places')
+                self.search.assert_called_once()
+
     def test_low_budget_cannot_approve_or_share(self):
         self.extract.return_value = {'details': {**DETAILS, 'budget': 100}}
-        self.step(); self.step(action='select', venue_id='place-1')
+        self.step(); self.step(action='select', venue_id='place-1'); self.step(action='food', food_mode='shop')
         out = self.step(action='approve')
         self.assertEqual(out['stage'], 'approval')
         self.assertEqual(out['plan']['status'], 'needs_revision')
         self.assertIsNone(out['shared'])
 
     def test_revision_resets_approval_and_reuses_search(self):
-        self.step(); self.step(action='select', venue_id='place-1'); self.step(action='approve')
+        self.step(); self.step(action='select', venue_id='place-1'); self.step(action='food', food_mode='shop'); self.step(action='approve')
         out = self.step(message='change budget to $1500')
         self.assertEqual(out['stage'], 'places')
         self.assertIsNone(out['plan'])
@@ -103,10 +117,20 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(first.json()['stage'], 'places')
             self.assertEqual(client.get('/api/workflows/'+self.thread).json()['stage'], 'places')
             payload.update(action='select', venue_id='place-1')
-            self.assertEqual(client.post('/api/chat', json=payload).json()['stage'], 'approval')
+            self.assertEqual(client.post('/api/chat', json=payload).json()['stage'], 'food')
             payload.update(action='share', plan={'status': 'approved'})
             # A forged client plan cannot create a share without the approval checkpoint.
             self.assertEqual(client.post('/api/chat', json=payload).status_code, 409)
+
+    def test_picnic_page_serves_the_workspace_shell(self):
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        with TestClient(app) as client:
+            response=client.get('/picnic.html')
+            self.assertEqual(response.status_code,200)
+            self.assertIn('text/html',response.headers['content-type'])
+            self.assertIn('id="picnic-page-heading"',response.text)
+            self.assertIn('id="picnic-nav"',response.text)
 
 
     def test_bare_guest_count_overrides_stale_llm_question(self):

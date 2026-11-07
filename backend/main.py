@@ -6,14 +6,28 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, ConfigDict
 
 from backend.planner import build_plan
 from backend.sharing import create_share, read_share, add_review
 
-app = FastAPI(title='Team-9 Project — Smart Picnic Planner', version='0.1.0')
+app = FastAPI(title='BLANKET & BITES !! — Picnic Planner', version='0.1.0')
+
+from backend.accounts import router as account_router, authorize_workflow
+app.include_router(account_router)
+
+
+@app.middleware('http')
+async def private_responses(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith(('/api/auth', '/api/account', '/api/workflows', '/api/chat', '/login.html', '/account.html')):
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 class PicnicRequest(BaseModel):
@@ -34,6 +48,12 @@ def health():
     return {'status': 'ok', 'mode': 'langgraph', 'providers': 'Groq + Tavily'}
 
 
+@app.get('/picnic.html', include_in_schema=False)
+def picnic_page():
+    # Both views use the same workspace shell and canonical workflow controller.
+    return FileResponse(Path(__file__).resolve().parents[1] / 'frontend' / 'index.html')
+
+
 @app.post('/api/plans')
 def create_plan(request: PicnicRequest):
     return build_plan(request.model_dump(mode='json'))
@@ -43,8 +63,12 @@ class ChatRequest(BaseModel):
     message: str = Field(default='', max_length=4000)
     today: date
     thread_id: str | None = Field(default=None, pattern=r'^[A-Za-z0-9_-]{32}$')
-    action: Literal['message', 'select', 'approve', 'share'] = 'message'
+    action: Literal['message', 'select', 'food', 'approve', 'share'] = 'message'
     venue_id: str | None = Field(default=None, max_length=100)
+    food_mode: Literal['shop', 'order'] | None = None
+    food_near: Literal['venue', 'start'] = 'venue'
+    food_search_id: str | None = Field(default=None, pattern=r'^[A-Za-z0-9_-]{32}$')
+    food_option_id: str | None = Field(default=None, max_length=100)
 
 
 def workflow_call(thread_id, payload=None, read_only=False):
@@ -61,18 +85,52 @@ def workflow_call(thread_id, payload=None, read_only=False):
 
 
 @app.post('/api/chat')
-def chat(request: ChatRequest):
+def chat(request: ChatRequest, http_request: Request):
     thread_id = request.thread_id or secrets.token_urlsafe(24)
+    authorize_workflow(thread_id, http_request)
     if request.action == 'message' and not request.message.strip():
         raise HTTPException(status_code=422, detail='Enter a message.')
     return workflow_call(thread_id, request.model_dump(mode='json'))
 
 
 @app.get('/api/workflows/{thread_id}')
-def get_workflow(thread_id: str):
+def get_workflow(thread_id: str, http_request: Request):
     if not __import__('re').fullmatch(r'[A-Za-z0-9_-]{32}', thread_id):
         raise HTTPException(status_code=404, detail='Workflow not found.')
+    authorize_workflow(thread_id, http_request)
     return workflow_call(thread_id, read_only=True)
+
+
+class FoodSearchRequest(BaseModel):
+    mode: Literal['shop', 'order']
+    near: Literal['venue', 'start'] = 'venue'
+
+
+@app.post('/api/workflows/{thread_id}/food-copy', status_code=201)
+def copy_food_workflow(thread_id: str, http_request: Request):
+    from backend.workflow import copy_for_food
+    authorize_workflow(thread_id, http_request)
+    if not __import__('re').fullmatch(r'[A-Za-z0-9_-]{32}', thread_id):
+        raise HTTPException(status_code=404, detail='Workflow not found.')
+    try:
+        return copy_for_food(thread_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail='Workflow not found.') from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post('/api/workflows/{thread_id}/food-options')
+def food_options(thread_id: str, request: FoodSearchRequest, http_request: Request):
+    from backend.food import find_options
+    from backend.providers import ProviderError
+    current = get_workflow(thread_id, http_request)
+    if not current.get('plan') or current['stage'] not in ('food', 'approval', 'share'):
+        raise HTTPException(status_code=409, detail='Choose a picnic place first. Shared plans cannot be changed.')
+    try:
+        return find_options(thread_id, current['plan'], request.mode, request.near)
+    except ProviderError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 class Activity(BaseModel):
